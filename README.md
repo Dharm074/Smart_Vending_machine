@@ -10,4 +10,5 @@ In the project file I have added Project workflow in parts
 
 4) in future scope we can upgrade project components as well as design and hardware testing of different methods
 
-   
+5) we can also add IOT functionality in it for that we need to change controller and peripheral circuitry
+
