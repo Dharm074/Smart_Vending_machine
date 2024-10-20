@@ -1,0 +1,78 @@
+int pwmPin1 = 9;    // PWM pin 1 (OC1A)
+int pwmPin2 = 10;   // PWM pin 2 (OC1B)
+int dutyCycle = 128; // Initial duty cycle (50%)
+int buttonPinStart = 3; // Start button connected to pin 3
+int buttonPinTask = 2;  // Task button connected to pin 2
+int sensorPin = A0;     // Analog sensor connected to pin A0
+int sensorThreshold = 500; // Threshold for detecting product dispensed
+
+void setup() {
+  // Setting PWM pins as output for the motor
+  pinMode(pwmPin1, OUTPUT);
+  pinMode(pwmPin2, OUTPUT);
+  
+  // Set button pins as input
+  pinMode(buttonPinStart, INPUT_PULLUP);  // Start button with internal pull-up
+  pinMode(buttonPinTask, INPUT_PULLUP);   // Task button with internal pull-up
+  
+  // Initialize serial communication 
+  Serial.begin(9600);
+
+  // Timer configuration for PWM
+  TCCR1A = 0;            // Clear the TCCR1A register
+  TCCR1B = 0;            // Clear the TCCR1B register
+
+  // Set fast PWM mode using ICR1 as top value
+  TCCR1B |= (1 << WGM13) | (1 << WGM12);
+  TCCR1A |= (1 << WGM11);
+
+  TCCR1A |= (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0); 
+
+  // Set prescaler to 8 (for more controllable PWM frequency)
+  TCCR1B |= (1 << CS11);
+  
+  ICR1 = 19999; // ICR1 = (16 MHz / (PWM frequency * Prescaler)) - 1
+
+  // Set the duty cycle for PWM
+  setDutyCycle(0); // Start with motor off (0% duty cycle)
+}
+
+void loop() {
+  // Check if the start button is pressed
+  if (digitalRead(buttonPinStart) == LOW) {  // Start button pressed
+    startMotorForTwoSeconds();
+  }
+
+  // Check if the task button is pressed
+  if (digitalRead(buttonPinTask) == LOW) {   // Task button pressed
+    Serial.println("Task Successful");       // Print to serial monitor
+    delay(1000); // Debounce delay (optional)
+  }
+  
+  // Read sensor value
+  int sensorValue = analogRead(sensorPin);
+  
+  // Check if product has been dispensed
+  if (sensorValue > sensorThreshold) {
+    Serial.println("Product Dispensed");  // Print if sensor value exceeds threshold
+    delay(1000); // Small delay to avoid printing too frequently
+  }
+}
+
+void startMotorForTwoSeconds() {
+  // Turn on the motor (PWM signals)
+  setDutyCycle(128);  // 50% duty cycle
+  delay(2000);        // Run for 2 seconds
+
+  // Turn off the motor (stop PWM signals)
+  setDutyCycle(0);    // 0% duty cycle, stop motor
+}
+
+void setDutyCycle(int duty) {
+  // Map duty cycle to PWM range
+  int pwmValue = map(duty, 0, 255, 0, ICR1);
+  
+  // Set the duty cycle for both PWM channels
+  OCR1A = pwmValue;      // PWM signal 1 (OC1A)
+  OCR1B = ICR1 - pwmValue; // Complementary signal 2 (OC1B)
+}
